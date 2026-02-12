@@ -1,4 +1,3 @@
-
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
@@ -29,7 +28,7 @@ export default function Comments({ auth }) {
         try {
             const params = new URLSearchParams(filters).toString();
             const response = await axios.get(`/api/comments?${params}`);
-            setComments(response.data.data); // Pagination data.data
+            setComments(response.data.data);
         } catch (error) {
             console.error("Error fetching comments", error);
         }
@@ -40,11 +39,11 @@ export default function Comments({ auth }) {
         setFilters({ ...filters, [e.target.name]: e.target.value });
     };
 
-    // Apply filters when values change (or use a button)
+    // Apply filters when values change
     useEffect(() => {
         const timeout = setTimeout(() => {
             fetchComments();
-        }, 500); // Debounce
+        }, 500);
         return () => clearTimeout(timeout);
     }, [filters]);
 
@@ -57,13 +56,11 @@ export default function Comments({ auth }) {
     }, []);
 
     const handleUpdate = async (id, field, value) => {
-        // Optimistic update
         const updatedComments = comments.map(c => 
             c.id === id ? { ...c, [field]: value } : c
         );
         setComments(updatedComments);
 
-        // Cari comment yang sedang diedit untuk mendapatkan nilai lengkap category_id dan status_id
         const comment = comments.find(c => c.id === id);
         
         try {
@@ -73,7 +70,7 @@ export default function Comments({ auth }) {
             });
         } catch (error) {
             console.error("Failed to update", error);
-            fetchComments(); // Revert on error
+            fetchComments();
         }
     };
 
@@ -96,130 +93,489 @@ export default function Comments({ auth }) {
     };
 
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Admin Komentar Aspirasi</h2>}
-        >
-            <Head title="Admin Comments" />
+        <AuthenticatedLayout user={auth.user}>
+            <Head title="Curhatin - Admin" />
+            
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900 dark:text-gray-100">
-                            
-                            {/* Actions & Filters */}
-                            <div className="mb-6 flex flex-wrap gap-4 items-end justify-between">
-                                <div className="flex gap-4 flex-wrap">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Dari Tanggal</label>
-                                        <input type="date" name="start_date" className="border rounded p-2 text-black" onChange={handleFilterChange} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Sampai Tanggal</label>
-                                        <input type="date" name="end_date" className="border rounded p-2 text-black" onChange={handleFilterChange} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Kategori</label>
-                                        <select name="category_id" className="border rounded p-2 text-black" onChange={handleFilterChange}>
-                                            <option value="">Semua</option>
-                                            {categories.map(cat => (
-                                                <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Status</label>
-                                        <select name="status_id" className="border rounded p-2 text-black" onChange={handleFilterChange}>
-                                            <option value="">Semua</option>
-                                            {statuses.map(st => (
-                                                <option key={st.id} value={st.id}>{st.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                                <button 
-                                    onClick={handleFetchInstagram}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                                    disabled={loading}
-                                >
-                                    {loading ? 'Processing...' : 'Sync Instagram'}
-                                </button>
-                            </div>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
 
-                            {/* Table */}
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                    <thead>
-                                        <tr className="bg-gray-50 dark:bg-gray-700">
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">TANGGAL</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">PENGGUNA</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ASPIRASI</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">POSTINGAN</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">KATEGORI</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">STATUS</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">AKSI</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                        {comments.map((comment) => (
-                                            <tr key={comment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                                                    <div>{new Date(comment.timestamp).toLocaleDateString('id-ID')}</div>
-                                                    <div className="text-xs font-semibold">{new Date(comment.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-gray-100">{comment.from_name}</td>
-                                                <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-300 max-w-xs overflow-hidden text-ellipsis" title={comment.message}>
-                                                    {comment.message}
-                                                </td>
-                                                <td className="px-4 py-4 whitespace-nowrap text-sm">
-                                                    <a 
-                                                        href={`${comment.post?.permalink}c/${comment.instagram_id}/`} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-transparent rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-gray-600 focus:bg-gray-200 dark:focus:bg-gray-600 active:bg-gray-300 dark:active:bg-gray-500 transition ease-in-out duration-150"
-                                                    >
-                                                        Lihat
-                                                    </a>
-                                                </td>
-                                                <td className="px-4 py-4 text-sm">
-                                                    <select 
-                                                        value={comment.category_id || ''} 
-                                                        onChange={(e) => handleUpdate(comment.id, 'category_id', e.target.value)}
-                                                        className="border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm text-xs p-1"
-                                                    >
-                                                        <option value="">- Pilih -</option>
-                                                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                                    </select>
-                                                </td>
-                                                <td className="px-4 py-4 text-sm">
-                                                    <select 
-                                                        value={comment.status_id} 
-                                                        onChange={(e) => handleUpdate(comment.id, 'status_id', e.target.value)}
-                                                        className={`border-gray-300 dark:border-gray-700 dark:bg-gray-900 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm text-xs font-bold p-1 ${
-                                                            comment.status_id == 1 ? 'text-red-500' : 
-                                                            comment.status_id == 2 ? 'text-yellow-500' : 'text-green-500'
-                                                        }`}
-                                                    >
-                                                        {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                                    </select>
-                                                </td>
-                                                <td className="px-4 py-4 text-sm">
-                                                    {/* Placeholder untuk Aksi lain jika diperlukan */}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {comments.length === 0 && (
-                                            <tr>
-                                                <td colSpan="7" className="px-6 py-10 text-center text-gray-500">Tidak ada data. Silakan Sync Instagram.</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                            
+                body {
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+                    background-color: #f5f7fa;
+                    color: #2d3748;
+                    line-height: 1.6;
+                }
+
+                .curhatin-header {
+                    background: #ffffff;
+                    border-bottom: 1px solid #e2e8f0;
+                    padding: 1.75rem 0;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+                    margin-bottom: 2.5rem;
+                }
+
+                .curhatin-brand {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                }
+
+                .curhatin-logo {
+                    width: 48px;
+                    height: 48px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .curhatin-logo img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                }
+
+                .curhatin-title {
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                    color: #1e293b;
+                    margin: 0;
+                    letter-spacing: -0.025em;
+                }
+
+                .curhatin-subtitle {
+                    font-size: 0.875rem;
+                    color: #64748b;
+                    margin: 0;
+                }
+
+                .filter-section {
+                    background: #ffffff;
+                    border-radius: 12px;
+                    border: 1px solid #e2e8f0;
+                    padding: 2rem;
+                    margin-bottom: 2rem;
+                }
+
+                .filter-header {
+                    font-size: 1.125rem;
+                    font-weight: 600;
+                    color: #1e293b;
+                    margin-bottom: 1.5rem;
+                    padding-bottom: 1rem;
+                    border-bottom: 2px solid #f1f5f9;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+
+                .form-group {
+                    margin-bottom: 1rem;
+                }
+
+                .form-label {
+                    display: block;
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                    color: #475569;
+                    margin-bottom: 0.5rem;
+                }
+
+                .form-control,
+                .form-select {
+                    width: 100%;
+                    padding: 0.625rem 0.875rem;
+                    font-size: 0.9375rem;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 6px;
+                    background-color: #ffffff;
+                    transition: border-color 0.15s ease;
+                    color: #1e293b;
+                }
+
+                .form-control:focus,
+                .form-select:focus {
+                    outline: none;
+                    border-color: #2563eb;
+                    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+                }
+
+                .btn-primary-custom {
+                    background: #2563eb;
+                    color: #ffffff;
+                    border: none;
+                    padding: 0.625rem 1.5rem;
+                    font-size: 0.9375rem;
+                    font-weight: 500;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: background-color 0.2s ease;
+                }
+
+                .btn-primary-custom:hover {
+                    background: #1d4ed8;
+                }
+
+                .btn-primary-custom:disabled {
+                    background: #94a3b8;
+                    cursor: not-allowed;
+                }
+
+                .btn-sync {
+                    background: #10b981;
+                    color: #ffffff;
+                    border: none;
+                    padding: 0.625rem 1.5rem;
+                    font-size: 0.9375rem;
+                    font-weight: 500;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: background-color 0.2s ease;
+                }
+
+                .btn-sync:hover {
+                    background: #059669;
+                }
+
+                .btn-sync:disabled {
+                    background: #94a3b8;
+                    cursor: not-allowed;
+                }
+
+                .data-section {
+                    background: #ffffff;
+                    border-radius: 12px;
+                    border: 1px solid #e2e8f0;
+                    overflow: hidden;
+                }
+
+                .data-header {
+                    padding: 1.5rem 2rem;
+                    border-bottom: 1px solid #e2e8f0;
+                    background: #fafbfc;
+                }
+
+                .data-header h2 {
+                    font-size: 1.125rem;
+                    font-weight: 600;
+                    color: #1e293b;
+                    margin: 0;
+                }
+
+                .table-container {
+                    overflow-x: auto;
+                }
+
+                .data-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+
+                .data-table thead th {
+                    background: #f8fafc;
+                    padding: 1rem 1.5rem;
+                    text-align: left;
+                    font-size: 0.8125rem;
+                    font-weight: 600;
+                    color: #475569;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    border-bottom: 1px solid #e2e8f0;
+                    white-space: nowrap;
+                }
+
+                .data-table tbody td {
+                    padding: 1.25rem 1.5rem;
+                    border-bottom: 1px solid #f1f5f9;
+                    font-size: 0.9375rem;
+                    color: #334155;
+                }
+
+                .data-table tbody tr:hover {
+                    background-color: #f9fafb;
+                }
+
+                .data-table tbody tr:last-child td {
+                    border-bottom: none;
+                }
+
+                .user-info {
+                    font-weight: 500;
+                    color: #1e293b;
+                }
+
+                .date-info {
+                    color: #64748b;
+                    font-size: 0.875rem;
+                }
+
+                .text-content {
+                    max-width: 400px;
+                    line-height: 1.5;
+                }
+
+                .btn-link {
+                    display: inline-block;
+                    padding: 0.5rem 1rem;
+                    background: #f1f5f9;
+                    color: #475569;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                    border: 1px solid #e2e8f0;
+                }
+
+                .btn-link:hover {
+                    background: #e2e8f0;
+                    color: #334155;
+                }
+
+                .form-select-inline {
+                    padding: 0.5rem 0.75rem;
+                    font-size: 0.875rem;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 6px;
+                    background-color: #ffffff;
+                    min-width: 150px;
+                    cursor: pointer;
+                    color: #1e293b;
+                }
+
+                .form-select-inline:focus {
+                    outline: none;
+                    border-color: #2563eb;
+                    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+                }
+
+                .empty-state {
+                    padding: 4rem 2rem;
+                    text-align: center;
+                }
+
+                .empty-state-icon {
+                    width: 64px;
+                    height: 64px;
+                    background: #f1f5f9;
+                    border-radius: 50%;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-bottom: 1rem;
+                    font-size: 1.5rem;
+                    color: #94a3b8;
+                }
+
+                .empty-state h3 {
+                    font-size: 1.125rem;
+                    font-weight: 600;
+                    color: #475569;
+                    margin-bottom: 0.5rem;
+                }
+
+                .empty-state p {
+                    color: #94a3b8;
+                    font-size: 0.9375rem;
+                }
+
+                .container-custom {
+                    max-width: 1280px;
+                    margin: 0 auto;
+                    padding: 0 1.5rem;
+                }
+
+                @media (max-width: 768px) {
+                    .filter-section {
+                        padding: 1.5rem;
+                    }
+
+                    .data-header {
+                        padding: 1.25rem 1rem;
+                    }
+
+                    .data-table thead th,
+                    .data-table tbody td {
+                        padding: 1rem;
+                        font-size: 0.875rem;
+                    }
+
+                    .curhatin-title {
+                        font-size: 1.25rem;
+                    }
+                }
+            `}</style>
+
+            <div className="curhatin-header">
+                <div className="container-custom">
+                    <div className="curhatin-brand">
+                        <div className="curhatin-logo">
+                            <img src="/logo-diskominfo.png" alt="Diskominfo Logo" />
+                        </div>
+                        <div>
+                            <h1 className="curhatin-title">CURHAT-IN</h1>
+                            <p className="curhatin-subtitle">Curahan Hati Aspirasi Terintegrasi Instagram</p>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div className="container-custom">
+                <section className="filter-section">
+                    <div className="filter-header">
+                        <span>Filter Data</span>
+                        <button 
+                            onClick={handleFetchInstagram}
+                            className="btn-sync"
+                            disabled={loading}
+                        >
+                            {loading ? 'Processing...' : 'Sync Instagram'}
+                        </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                        <div className="form-group">
+                            <label className="form-label">Dari Tanggal</label>
+                            <input 
+                                type="date" 
+                                name="start_date" 
+                                className="form-control" 
+                                value={filters.start_date}
+                                onChange={handleFilterChange} 
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Sampai Tanggal</label>
+                            <input 
+                                type="date" 
+                                name="end_date" 
+                                className="form-control" 
+                                value={filters.end_date}
+                                onChange={handleFilterChange} 
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Kategori</label>
+                            <select 
+                                name="category_id" 
+                                className="form-select"
+                                value={filters.category_id}
+                                onChange={handleFilterChange}
+                            >
+                                <option value="">Semua Kategori</option>
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Status</label>
+                            <select 
+                                name="status_id" 
+                                className="form-select"
+                                value={filters.status_id}
+                                onChange={handleFilterChange}
+                            >
+                                <option value="">Semua Status</option>
+                                {statuses.map(st => (
+                                    <option key={st.id} value={st.id}>{st.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="data-section">
+                    <div className="data-header">
+                        <h2>Daftar Aspirasi</h2>
+                    </div>
+                    <div className="table-container">
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Pengguna</th>
+                                    <th>Aspirasi</th>
+                                    <th>Postingan</th>
+                                    <th>Kategori</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {comments.map((comment) => (
+                                    <tr key={comment.id}>
+                                        <td>
+                                            <div className="date-info">
+                                                {new Date(comment.timestamp).toLocaleDateString('id-ID')}
+                                            </div>
+                                            <div className="date-info">
+                                                {new Date(comment.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="user-info">{comment.from_name}</div>
+                                        </td>
+                                        <td>
+                                            <div className="text-content">{comment.message}</div>
+                                        </td>
+                                        <td>
+                                            <a 
+                                                href={`${comment.post?.permalink}c/${comment.instagram_id}/`} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="btn-link"
+                                            >
+                                                Lihat
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <select 
+                                                value={comment.category_id || ''} 
+                                                onChange={(e) => handleUpdate(comment.id, 'category_id', e.target.value)}
+                                                className="form-select-inline"
+                                            >
+                                                <option value="">Pilih Kategori</option>
+                                                {categories.map(c => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select 
+                                                value={comment.status_id} 
+                                                onChange={(e) => handleUpdate(comment.id, 'status_id', e.target.value)}
+                                                className="form-select-inline"
+                                            >
+                                                {statuses.map(s => (
+                                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            {/* Placeholder untuk Aksi lain jika diperlukan */}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {comments.length === 0 && (
+                                    <tr>
+                                        <td colSpan="7">
+                                            <div className="empty-state">
+                                                <div className="empty-state-icon">📋</div>
+                                                <h3>Belum Ada Data</h3>
+                                                <p>Belum ada aspirasi yang masuk saat ini</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </AuthenticatedLayout>
     );
