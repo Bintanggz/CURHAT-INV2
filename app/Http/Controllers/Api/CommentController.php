@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\InstagramComment;
+use App\Models\InstagramMessage;
 use App\Models\Category;
 use App\Models\ComplaintStatus;
 use Illuminate\Http\Request;
@@ -13,11 +14,37 @@ class CommentController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = InstagramComment::with(['category', 'status', 'post']);
+        // 1. Ambil Komentar
+        $commentQuery = InstagramComment::with(['category', 'status', 'post']);
+        $this->applyFilters($commentQuery, $request);
+        $comments = $commentQuery->get()->map(function($item) {
+            $item->type = 'comment';
+            return $item;
+        });
 
+        // 2. Ambil DM (Messages)
+        $messageQuery = InstagramMessage::with(['category', 'status']);
+        $this->applyFilters($messageQuery, $request);
+        $messages = $messageQuery->get()->map(function($item) {
+            $item->type = 'dm';
+            return $item;
+        });
+
+        // 3. Gabungkan dan Urutkan
+        $allAspirasi = $comments->concat($messages)
+            ->sortByDesc('timestamp')
+            ->values();
+
+        return response()->json([
+            'data' => $allAspirasi
+        ]);
+    }
+
+    protected function applyFilters($query, Request $request)
+    {
         // Filter by Date
         if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('timestamp', [$request->start_date, $request->end_date]);
+            $query->whereBetween('timestamp', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
         }
 
         // Filter by Category
@@ -29,10 +56,6 @@ class CommentController extends Controller
         if ($request->has('status_id') && $request->status_id != '') {
             $query->where('status_id', $request->status_id);
         }
-
-        $comments = $query->orderBy('timestamp', 'desc')->paginate(10);
-
-        return response()->json($comments);
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -40,15 +63,21 @@ class CommentController extends Controller
         $request->validate([
             'category_id' => 'nullable|exists:categories,id',
             'status_id' => 'required|exists:complaint_statuses,id',
+            'type' => 'required|in:comment,dm'
         ]);
 
-        $comment = InstagramComment::findOrFail($id);
-        $comment->update([
+        if ($request->type === 'comment') {
+            $item = InstagramComment::findOrFail($id);
+        } else {
+            $item = InstagramMessage::findOrFail($id);
+        }
+
+        $item->update([
             'category_id' => $request->category_id,
             'status_id' => $request->status_id,
         ]);
 
-        return response()->json(['message' => 'Comment updated successfully', 'data' => $comment]);
+        return response()->json(['message' => 'Updated successfully', 'data' => $item]);
     }
 
     public function categories(): JsonResponse

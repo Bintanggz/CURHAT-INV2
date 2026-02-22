@@ -14,6 +14,7 @@ export default function Comments({ auth }) {
         status_id: ''
     });
     const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('comment');
 
     // Fetch Initial Data (Dropdowns)
     useEffect(() => {
@@ -28,7 +29,8 @@ export default function Comments({ auth }) {
         try {
             const params = new URLSearchParams(filters).toString();
             const response = await axios.get(`/api/comments?${params}`);
-            setComments(response.data.data);
+            const data = response.data.data || response.data;
+            setComments(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error("Error fetching comments", error);
         }
@@ -46,7 +48,7 @@ export default function Comments({ auth }) {
         }, 500);
         return () => clearTimeout(timeout);
     }, [filters]);
-
+    
     // Auto-refresh every 60 seconds
     useEffect(() => {
         const interval = setInterval(() => {
@@ -56,17 +58,19 @@ export default function Comments({ auth }) {
     }, []);
 
     const handleUpdate = async (id, field, value) => {
+        const item = comments.find(c => c.id === id);
+        if (!item) return;
+
         const updatedComments = comments.map(c => 
             c.id === id ? { ...c, [field]: value } : c
         );
         setComments(updatedComments);
-
-        const comment = comments.find(c => c.id === id);
         
         try {
             await axios.put(`/api/comments/${id}`, {
-                category_id: field === 'category_id' ? value : comment.category_id,
-                status_id: field === 'status_id' ? value : comment.status_id
+                category_id: field === 'category_id' ? value : item.category_id,
+                status_id: field === 'status_id' ? value : item.status_id,
+                type: item.type // Kirim tipe agar backend tahu tabel mana yang diupdate
             });
         } catch (error) {
             console.error("Failed to update", error);
@@ -80,7 +84,7 @@ export default function Comments({ auth }) {
         try {
             const response = await axios.get('/api/instagram/fetch');
             if (response.data.status === 'success') {
-                alert('Sync Berhasil! Komentar baru: ' + response.data.new_comments);
+                alert(`Sync Berhasil!\nKomentar baru: ${response.data.new_comments}\nDM baru: ${response.data.new_messages}`);
                 fetchComments();
             } else {
                 alert('Gagal Sync: ' + response.data.message);
@@ -409,6 +413,35 @@ export default function Comments({ auth }) {
                         font-size: 1.25rem;
                     }
                 }
+
+                .tab-navigation {
+                    display: flex;
+                    gap: 1rem;
+                    margin-bottom: 2rem;
+                    border-bottom: 2px solid #e2e8f0;
+                    padding-bottom: 0px;
+                }
+
+                .tab-button {
+                    padding: 0.75rem 1.5rem;
+                    font-size: 0.9375rem;
+                    font-weight: 600;
+                    color: #64748b;
+                    border: none;
+                    background: none;
+                    cursor: pointer;
+                    border-bottom: 3px solid transparent;
+                    transition: all 0.2s ease;
+                }
+
+                .tab-button:hover {
+                    color: #1e293b;
+                }
+
+                .tab-button.active {
+                    color: #2563eb;
+                    border-bottom-color: #2563eb;
+                }
             `}</style>
 
             <div className="curhatin-header">
@@ -489,9 +522,24 @@ export default function Comments({ auth }) {
                     </div>
                 </section>
 
+                <div className="tab-navigation">
+                    <button 
+                        className={`tab-button ${activeTab === 'comment' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('comment')}
+                    >
+                        Tabel Komentar
+                    </button>
+                    <button 
+                        className={`tab-button ${activeTab === 'dm' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('dm')}
+                    >
+                        Tabel DM
+                    </button>
+                </div>
+
                 <section className="data-section">
                     <div className="data-header">
-                        <h2>Daftar Aspirasi</h2>
+                        <h2>Daftar Aspirasi ({activeTab === 'comment' ? 'Komentar' : 'Direct Message'})</h2>
                     </div>
                     <div className="table-container">
                         <table className="data-table">
@@ -500,14 +548,16 @@ export default function Comments({ auth }) {
                                     <th>Tanggal</th>
                                     <th>Pengguna</th>
                                     <th>Aspirasi</th>
-                                    <th>Postingan</th>
+                                    {activeTab === 'comment' ? <th>Postingan</th> : <th>Sumber</th>}
                                     <th>Kategori</th>
                                     <th>Status</th>
                                     <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {comments.map((comment) => (
+                                {comments
+                                    .filter(c => c.type === activeTab)
+                                    .map((comment) => (
                                     <tr key={comment.id}>
                                         <td>
                                             <div className="date-info">
@@ -524,14 +574,26 @@ export default function Comments({ auth }) {
                                             <div className="text-content">{comment.message}</div>
                                         </td>
                                         <td>
-                                            <a 
-                                                href={`${comment.post?.permalink}c/${comment.instagram_id}/`} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="btn-link"
-                                            >
-                                                Lihat
-                                            </a>
+                                            {comment.type === 'comment' ? (
+                                                <a 
+                                                    href={`${comment.post?.permalink}c/${comment.instagram_id}/`} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="btn-link"
+                                                >
+                                                    Lihat
+                                                </a>
+                                            ) : (
+                                                <span className="date-info" style={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: '0.5rem',
+                                                    color: '#0369a1',
+                                                    fontWeight: '500'
+                                                }}>
+                                                    <span style={{ fontSize: '1.2rem' }}>📥</span> Inbox DM
+                                                </span>
+                                            )}
                                         </td>
                                         <td>
                                             <select 
@@ -561,13 +623,13 @@ export default function Comments({ auth }) {
                                         </td>
                                     </tr>
                                 ))}
-                                {comments.length === 0 && (
+                                {comments.filter(c => c.type === activeTab).length === 0 && (
                                     <tr>
                                         <td colSpan="7">
                                             <div className="empty-state">
                                                 <div className="empty-state-icon">📋</div>
                                                 <h3>Belum Ada Data</h3>
-                                                <p>Belum ada aspirasi yang masuk saat ini</p>
+                                                <p>Belum ada {activeTab === 'comment' ? 'komentar' : 'pesan DM'} yang masuk saat ini</p>
                                             </div>
                                         </td>
                                     </tr>

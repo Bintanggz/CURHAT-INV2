@@ -31,7 +31,9 @@ class FetchInstagramComments extends Command
         $result = $service->syncData();
 
         if ($result['status'] === 'success') {
-            $this->info("Success! New comments synced: " . $result['new_comments']);
+            $this->info("Success!");
+            $this->info("New comments synced: " . ($result['new_comments'] ?? 0));
+            $this->info("New messages synced: " . ($result['new_messages'] ?? 0));
         } else {
             $this->error("Error: " . $result['message']);
         }
