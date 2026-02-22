@@ -451,7 +451,7 @@ export default function Comments({ auth }) {
                             <img src="/logo-diskominfo.png" alt="Diskominfo Logo" />
                         </div>
                         <div>
-                            <h1 className="curhatin-title">CURHATIN</h1>
+                            <h1 className="curhatin-title">CURHAT-IN</h1>
                             <p className="curhatin-subtitle">Curahan Hati Aspirasi Terintegrasi Instagram</p>
                         </div>
                     </div>
