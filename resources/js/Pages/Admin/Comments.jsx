@@ -98,7 +98,7 @@ export default function Comments({ auth }) {
 
     return (
         <AuthenticatedLayout user={auth.user}>
-            <Head title="Curhatin - Admin" />
+            <Head title="CURHATIN - Admin" />
             
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
